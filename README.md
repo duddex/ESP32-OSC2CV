@@ -31,3 +31,11 @@ The values of x and y will be sent to pin 25 and 26 which are the DAC (digital-a
 ### Page 3: Sliders and Push Buttons
 
 You can find two sliders and two push buttons on page 3 of the TouchOSC layout. The value of slider 1 (the slider on the left hand side) is sent to pin 25. Slider 2 is connected to pin 26. The first push button sends a trigger to pin 32. The second push button sends a trigger to pin 33.
+
+## Python code: Sending Control Voltage using Real-time Hand Gesture Recognition
+
+Based on <https://google.github.io/mediapipe/solutions/hands.html>
+
+The distance between index finger and thumb is mapped to a value between 0 and 255 and sent via OSC to pin 25. When the index finger and thumb are "closed" the Python script sends a trigger to pin 2.
+
+TODO: add more information
