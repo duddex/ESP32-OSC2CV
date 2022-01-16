@@ -1,108 +1,97 @@
 import cv2
-import mediapipe as mp
 import math
 import numpy as np
 from pythonosc.udp_client import SimpleUDPClient
 
-# Mediapipe Solutions APIs
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_hands = mp.solutions.hands
+
+class mpHands:
+    import mediapipe as mp
+
+    def __init__(self):
+        self.hands = self.mp.solutions.hands.Hands(
+            model_complexity=0, min_detection_confidence=0.6, min_tracking_confidence=0.4)
+
+    def Marks(self, frame):
+        myHands = []
+        handsType = []
+        frameRGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(frameRGB)
+        if results.multi_hand_landmarks != None:
+            for hand in results.multi_handedness:
+                handType = hand.classification[0].label
+                handsType.append(handType)
+            for handLandMarks in results.multi_hand_landmarks:
+                myHand = []
+                for landMark in handLandMarks.landmark:
+                    myHand.append(
+                        (int(landMark.x*width), int(landMark.y*height)))
+                myHands.append(myHand)
+        return myHands, handsType
+
 
 # Webcam Setup
-wCam, hCam = 640, 480
+width = 640
+height = 480
 cam = cv2.VideoCapture(0)
-cam.set(3, wCam)
-cam.set(4, hCam)
+cam.set(3, width)
+cam.set(4, height)
 
 # Open connection to 192.168.200.66 on port 8000
 client = SimpleUDPClient("192.168.200.66", 8000)
 
-# Store values of trigger (index finger and thumb closed)
-trigger = 0.00
-oldTrigger = 0.00
+# instantiate Mediapipe Helperclass
+findHands = mpHands()
 
-# Mediapipe Hand Landmark Model
-with mp_hands.Hands() as hands:
-    while cam.isOpened():
-        success, image = cam.read()
+while cam.isOpened():
+    success, image = cam.read()
+    if not success:
+        # Ignoring empty camera frame
+        continue
 
-        if not success:
-            #print("Ignoring empty camera frame.")
-            continue # If loading a video, use 'break' instead of 'continue'
+    image = cv2.resize(image, (width, height))
+    handData, handsType = findHands.Marks(image)
+    for hand, handType in zip(handData, handsType):
+        if handType == 'Left':
+            handColor = (0, 0, 255)
+            textPosition = 40
+            oscTriggerPath = "/3/push1"
+            oscValuePath = "/3/fader1"
+        if handType == 'Right':
+            handColor = (255, 0, 0)
+            textPosition = 550
+            oscTriggerPath = "/3/push2"
+            oscValuePath = "/3/fader2"
 
-        # To improve performance, optionally mark the image as not writeable to pass by reference
-        image.flags.writeable = False
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = hands.process(image)
+        thumbTip = hand[4]
+        indexFingerTip = hand[8]
+        x1, y1 = thumbTip
+        x2, y2 = indexFingerTip
 
-        # Draw the hand annotations on the image
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(
-                    image,
-                    hand_landmarks,
-                    mp_hands.HAND_CONNECTIONS,
-                    mp_drawing_styles.get_default_hand_landmarks_style(),
-                    mp_drawing_styles.get_default_hand_connections_style()
-                )
+        # Calculate the distance between thumb and index finger
+        length = math.hypot(x2-x1, y2-y1)
+        value = np.interp(length, [50, 200], [0, 255])
+        cv2.putText(image, f'{int(value)}', (textPosition, 450),
+                    cv2.FONT_HERSHEY_COMPLEX, 1, handColor, 2)
 
-        # Using the "multi_hand_landmarks" method for finding the position of the hand landmarks
-        lmList = []
-        if results.multi_hand_landmarks:
-            myHand = results.multi_hand_landmarks[0]
-            for id, lm in enumerate(myHand.landmark):
-                h, w, c = image.shape
-                cx, cy = int(lm.x * w), int(lm.y * h)
-                lmList.append([id, cx, cy])
+        # Mark closed thumb and index finger with a green circle and set trigger
+        if length < 20:
+            cv2.circle(image, indexFingerTip, 10, (0, 255, 0), cv2.FILLED)
+            trigger = 1.00
+        else:
+            # Mark thumb and index finger with circles
+            cv2.circle(image, thumbTip, 8, handColor, cv2.FILLED)
+            cv2.circle(image, indexFingerTip, 8, handColor, cv2.FILLED)
+            cv2.line(image, thumbTip, indexFingerTip, handColor, 2)
+            trigger = 0.00
 
-        # Assigning variables for thumb and index finger position
-        if len(lmList) != 0:
-            x1, y1 = lmList[4][1], lmList[4][2]
-            x2, y2 = lmList[8][1], lmList[8][2]
-            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+        # Send the value via OSC
+        client.send_message(oscValuePath, value)
+        client.send_message(oscTriggerPath, trigger)
 
-            # Marking thumb and index finger with red circles
-            cv2.circle(image, (x1, y1), 10, (0, 0, 255), cv2.FILLED)
-            cv2.circle(image, (x2, y2), 10, (0, 0, 255), cv2.FILLED)
-            cv2.line(image, (x1, y1), (x2, y2), (0, 0, 200), 1)
-            cv2.circle(image, (cx, cy), 10, (0, 0, 255), cv2.FILLED)
+    cv2.imshow('OSC Hand Gesture Control', image)
 
-            # Calculate the distance between thumb and index finger
-            length = math.hypot(x2-x1, y2-y1)
-
-            # Mark closed thumb and index finger with a green circle and set trigger
-            if length < 50:
-                cv2.circle(image, (cx, cy), 15, (0, 255, 0), cv2.FILLED)
-                trigger = 1.00
-            else:
-                trigger = 0.00
-
-            # Only send the trigger, if the value has changed
-            if oldTrigger != trigger:
-                client.send_message("/1/push", trigger)
-                oldTrigger = trigger
-
-            # Map the distance between thumb and index finger
-            # to matching values for drawing the "volume" bar
-            # and for sending the value via OSC
-            barValue = np.interp(length, [50, 220], [400, 150])
-            value = np.interp(length, [50, 220], [0, 255])
-
-            # Draw "volume" bar
-            cv2.rectangle(image, (50, 150), (85, 400), (0, 255, 0), 3)
-            cv2.rectangle(image, (50, int(barValue)), (85, 400), (0, 255, 0), cv2.FILLED)
-            cv2.putText(image, f'{int(value)}', (40, 450), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0), 3)
-
-            # Send the value via OSC
-            client.send_message("/3/fader1", value)
-
-        cv2.imshow('OSC Hand Gesture Control', image)
-
-        # Press "q" to quit
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    # press "q" to quit
+    if cv2.waitKey(1) & 0xff == ord('q'):
+        break
 
 cam.release()
