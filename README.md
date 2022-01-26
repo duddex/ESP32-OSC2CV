@@ -36,6 +36,4 @@ You can find two sliders and two push buttons on page 3 of the TouchOSC layout. 
 
 Based on <https://google.github.io/mediapipe/solutions/hands.html>
 
-The distance between index finger and thumb is mapped to a value between 0 and 255 and sent via OSC to pin 25. When the index finger and thumb are "closed" the Python script sends a trigger to pin 2.
-
-TODO: add more information
+The distance between index fingers and thumbs of both hands are mapped to a value between 0 and 255 and sent via OSC to pins 25 and 26. When the index finger and thumb are "closed" the Python script sends a trigger to pin 32 and 33.
