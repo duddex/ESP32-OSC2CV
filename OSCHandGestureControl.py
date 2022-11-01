@@ -36,8 +36,9 @@ cam = cv2.VideoCapture(0)
 cam.set(3, width)
 cam.set(4, height)
 
-# Open connection to 192.168.200.66 on port 8000
-client = SimpleUDPClient("192.168.200.66", 8000)
+# Open connection to 192.168.4.1 on port 8000
+# Check the output of ESP32-OSC2CV.ino to get the IP address
+client = SimpleUDPClient("192.168.4.1", 8000)
 
 # instantiate Mediapipe Helperclass
 findHands = mpHands()

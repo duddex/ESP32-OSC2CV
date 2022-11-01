@@ -1,4 +1,3 @@
-
 /*
  * Based on
 *   https://www.youtube.com/watch?v=GKnuqrTxj9k&ab_channel=janfiess
@@ -11,37 +10,28 @@
 #include <WiFiUdp.h>
 #include <OSCMessage.h>
 
+// Replace with your network credentials
+const char* ssid = "ESP32-OSC-Access-Point";
+const char* password = "123456789";
+
 int x = 0;
 int y = 0;
 int oldx = 0;
 int oldy = 0; 
 WiFiUDP Udp;
 
-// ----------------------------------------------------------------------
 void setup() {
     Serial.begin(115200);
 
-    // Specify a static IP address - only needeed for receiving messages
-    // If you erase this line, the ESP32 will get a dynamic IP address
-    WiFi.config(IPAddress(192, 168, 200, 66), IPAddress(192, 168, 200, 1), IPAddress(255, 255, 255, 0));
+    // Connect to Wi-Fi network with SSID and password
+    Serial.print("Setting AP (Access Point)...");
 
-    // Connect to WiFi network
-    const char ssid[] = "ESP32-OSC2CV"; // replace with your network SSID
-    const char pass[] = "your_pa$$w0rd"; // replace with your network password
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-    WiFi.begin(ssid, pass);
+    // Remove the password parameter, if you want the AP (Access Point) to be open
+    WiFi.softAP(ssid, password);
 
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-
+    Serial.print("AP IP address: ");
+    Serial.println(WiFi.softAPIP());
+  
     // local port to listen for UDP packets
     Udp.begin(8000);
 
