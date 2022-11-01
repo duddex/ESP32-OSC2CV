@@ -11,6 +11,10 @@ Using the OSC library from <https://github.com/CNMAT/OSC> and
 TouchOSC from Hexler.net (<https://hexler.net/touchosc-mk1>). I still
 use the old ("MK1") version of TouchOSC.
 
+## Connecting to the ESP32
+
+The ESP32 sets up an access point with the name "ESP32-OSC-Access-Point". Check the serial output to find out the IP address. Connect directly to this access point and set up your OSC client (for example TouchOSC) to use this IP address and port 8000.
+
 ## TouchOSC layout file
 
 I have restricted the x and y values of the sliders and the X/Y Pad from 0 to 255. I
@@ -36,4 +40,8 @@ You can find two sliders and two push buttons on page 3 of the TouchOSC layout. 
 
 Based on <https://google.github.io/mediapipe/solutions/hands.html>
 
+Start OSCHandGestureControl.py and place your hands in front of your webcam.
+
 The distance between index fingers and thumbs of both hands are mapped to a value between 0 and 255 and sent via OSC to pins 25 and 26. When the index finger and thumb are "closed" the Python script sends a trigger to pin 32 and 33.
+
+Press 'q' to quit.
